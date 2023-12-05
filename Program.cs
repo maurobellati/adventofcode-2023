@@ -1,3 +1,1 @@
-using adventofcode2023.Day01;
-
-Day01.Solve(args);
+adventofcode2023.Day02.Day02.Solve(args);
