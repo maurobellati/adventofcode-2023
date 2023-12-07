@@ -13,9 +13,7 @@ public static class Day01
         var first = line[firstIndex];
         var last = line[lastIndex];
 
-        var result = int.Parse($"{first}{last}");
-        // Console.WriteLine($"{line} -> {first} + {last} = {result}");
-        return result;
+        return int.Parse($"{first}{last}");
     }
 
     private static int ExtractFirstAndLastWordDigit(string line)
@@ -55,8 +53,6 @@ public static class Day01
             .MaxBy(it => it.Index)
             .Value;
 
-        var result = first * 10 + last;
-        Console.WriteLine($"{line} -> {first} + {last} = {result}");
-        return result;
+        return first * 10 + last;
     }
 }
