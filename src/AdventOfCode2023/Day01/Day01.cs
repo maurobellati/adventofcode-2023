@@ -2,27 +2,19 @@ namespace adventofcode2023.Day01;
 
 public static class Day01
 {
-    public static void Solve(string[] args)
-    {
-        var input = File.ReadAllLines($"Day01/{args.FirstOrDefault() ?? "input.txt"}");
+    public static int Part1(string file) => File.ReadAllLines(file).Select(ExtractFirstAndLastDigits).Sum();
 
-        Console.WriteLine($"Part 1: {Part1(input)}");
-        Console.WriteLine($"Part 2: {Part2(input)}");
-    }
-
-    private static int Part1(IEnumerable<string> input) => input.Select(ExtractFirstAndLastDigits).Sum();
-
-    private static int Part2(IEnumerable<string> input) => input.Select(ExtractFirstAndLastWordDigit).Sum();
+    public static int Part2(string file) => File.ReadAllLines(file).Select(ExtractFirstAndLastWordDigit).Sum();
 
     private static int ExtractFirstAndLastDigits(string line)
     {
         var firstIndex = line.IndexOfAny("0123456789".ToArray());
         var lastIndex = line.LastIndexOfAny("0123456789".ToArray());
-        var first = (int)char.GetNumericValue(line[firstIndex]);
-        var last = (int)char.GetNumericValue(line[lastIndex]);
+        var first = line[firstIndex];
+        var last = line[lastIndex];
 
-        var result = first * 10 + last;
-        Console.WriteLine($"{line} -> {first} + {last} = {result}");
+        var result = int.Parse($"{first}{last}");
+        // Console.WriteLine($"{line} -> {first} + {last} = {result}");
         return result;
     }
 

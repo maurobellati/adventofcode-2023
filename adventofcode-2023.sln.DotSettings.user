@@ -2,4 +2,9 @@
 	<s:String x:Key="/Default/Environment/Hierarchy/Build/BuildTool/CustomBuildToolPath/@EntryValue">/Users/maurobellati/.asdf/installs/dotnet-core/8.0.100/sdk/8.0.100/MSBuild.dll</s:String>
 	<s:String x:Key="/Default/Environment/Hierarchy/Build/BuildTool/DotNetCliExePath/@EntryValue">/Users/maurobellati/.asdf/installs/dotnet-core/8.0.100/dotnet</s:String>
 	<s:Boolean x:Key="/Default/Environment/Hierarchy/Build/BuildTool/RecentDotNetCliExePaths/=_002FUsers_002Fmaurobellati_002F_002Easdf_002Finstalls_002Fdotnet_002Dcore_002F8_002E0_002E100_002Fdotnet/@EntryIndexedValue">True</s:Boolean>
+	<s:String x:Key="/Default/Environment/UnitTesting/UnitTestSessionStore/Sessions/=768f752c_002D2a44_002D41cf_002Dadd5_002Da164bd2f44f8/@EntryIndexedValue">&lt;SessionState ContinuousTestingMode="0" IsActive="True" Name="Test1" xmlns="urn:schemas-jetbrains-com:jetbrains-ut-session"&gt;
+  &lt;TestAncestor&gt;
+    &lt;TestId&gt;xUnit::C11F0C82-D669-4721-ACFD-2BFBB3603B70::net8.0::AdventOfCode2023Tests.Tests&lt;/TestId&gt;
+  &lt;/TestAncestor&gt;
+&lt;/SessionState&gt;</s:String>
 	<s:Boolean x:Key="/Default/UserDictionary/Words/=adventofcode/@EntryIndexedValue">True</s:Boolean></wpf:ResourceDictionary>
