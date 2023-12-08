@@ -18,27 +18,6 @@ public static class Day06
         return recordBreakCount.Aggregate(1L, (x, y) => x * y);
     }
 
-    private static int BeatRecordCount(int time, int record)
-    {
-        var timeToDistances = TimeToDistances(time).ToList();
-        var beatRecordCount = timeToDistances.Count(distance => distance > record);
-        Console.WriteLine("With time {0} distances are [{1}]. Can beat the current record ({2}) {3} times", time, string.Join(", ", timeToDistances), record, beatRecordCount);
-        return beatRecordCount;
-    }
-
-    private static IEnumerable<int> TimeToDistances(int time) =>
-        Enumerable.Range(0, time).Select(
-            holdTime =>
-            {
-                var speed = holdTime;
-                var timeLeft = time - holdTime;
-                return speed * timeLeft;
-            });
-
-    private static IEnumerable<long> ParseInput(string line) =>
-        line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(long.Parse);
-
     public static long Part2(string file)
     {
         var lines = File.ReadAllLines(file);
@@ -47,6 +26,14 @@ public static class Day06
         var currentRecord = long.Parse(lines[1].Split(":")[1].Replace(" ", string.Empty));
 
         return BeatRecordCountWithRoots(time, currentRecord);
+    }
+
+    private static int BeatRecordCount(int time, int record)
+    {
+        var timeToDistances = TimeToDistances(time).ToList();
+        var beatRecordCount = timeToDistances.Count(distance => distance > record);
+        Console.WriteLine("With time {0} distances are [{1}]. Can beat the current record ({2}) {3} times", time, string.Join(", ", timeToDistances), record, beatRecordCount);
+        return beatRecordCount;
     }
 
     private static long BeatRecordCountWithRoots(long time, long record)
@@ -64,7 +51,28 @@ public static class Day06
         var ceilingRoot1 = (int)Math.Floor(root1 + 1);
         var floorRoot2 = (int)Math.Ceiling(root2 - 1);
         var beatRecordCount = floorRoot2 - ceilingRoot1 + 1;
-        Console.WriteLine("Equation: y = - x^2 + {0}x - {1} ==> roots: {2} and {3} ==> {5} - {4} + 1 = {6}", time, record, root1, root2, ceilingRoot1, floorRoot2, beatRecordCount);
+        Console.WriteLine(
+            "Equation: y = - x^2 + {0}x - {1} ==> roots: {2} and {3} ==> {5} - {4} + 1 = {6}",
+            time,
+            record,
+            root1,
+            root2,
+            ceilingRoot1,
+            floorRoot2,
+            beatRecordCount);
         return beatRecordCount;
     }
+
+    private static IEnumerable<long> ParseInput(string line) =>
+        line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(long.Parse);
+
+    private static IEnumerable<int> TimeToDistances(int time) =>
+        Enumerable.Range(0, time).Select(
+            holdTime =>
+            {
+                var speed = holdTime;
+                var timeLeft = time - holdTime;
+                return speed * timeLeft;
+            });
 }

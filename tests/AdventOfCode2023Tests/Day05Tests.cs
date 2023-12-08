@@ -5,16 +5,6 @@ using FluentAssertions;
 
 public class Day05Tests
 {
-    [Theory]
-    [InlineData("Day05/example.txt", 35)]
-    [InlineData("Day05/input.txt", 313045984)]
-    public void Part1(string file, int expected) => Assert.Equal(expected, Day05.Part1(file));
-
-    [Theory]
-    [InlineData("Day05/example.txt", 46)]
-    [InlineData("Day05/input.txt", 20283860)]
-    public void Part2(string file, int expected) => Assert.Equal(expected, Day05.Part2(file));
-
     [Fact]
     public void MapLookupTest()
     {
@@ -51,11 +41,20 @@ public class Day05Tests
         [
             new Day05.Range(1, 49),
             new Day05.Range(50, 51),
-            new Day05.Range(52, 99), //[50,97]=>[52,99]
+            new Day05.Range(52, 99),
             new Day05.Range(100, 100)
         ]);
-
     }
+
+    [Theory]
+    [InlineData("Day05/example.txt", 35)]
+    [InlineData("Day05/input.txt", 313045984)]
+    public void Part1(string file, int expected) => Assert.Equal(expected, Day05.Part1(file));
+
+    [Theory]
+    [InlineData("Day05/example.txt", 46)]
+    [InlineData("Day05/input.txt", 20283860)]
+    public void Part2(string file, int expected) => Assert.Equal(expected, Day05.Part2(file));
 
     [Fact]
     public void RuleIsMatchTest()
@@ -84,7 +83,6 @@ public class Day05Tests
         var (mapped, unmapped) = rule.Split(input);
 
         mapped.Should().Be(new Day05.Range(50, 51));
-        unmapped.Should().BeEquivalentTo([new Day05.Range(1, 97), new Day05.Range(100, 100)]);
-
+        unmapped.Should().BeEquivalentTo(new Day05.Range[]{new(1, 97), new(100, 100)});
     }
 }
