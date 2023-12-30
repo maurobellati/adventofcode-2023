@@ -2,7 +2,15 @@ namespace adventofcode2023;
 
 public static class Extensions
 {
-    public static bool Between(this int value, int min, int max) => min <= value && value <= max;
+    public static bool Between(this int value, int min, int max)
+    {
+        if (min <= max)
+        {
+            return min <= value && value <= max;
+        }
+
+        return Between(value, max, min);
+    }
 
     public static bool Between(this long value, long min, long max) => min <= value && value <= max;
 
