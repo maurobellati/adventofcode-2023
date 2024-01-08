@@ -33,4 +33,20 @@ public static class Extensions
         var gcd = Gcd(a, b);
         return gcd == 0 ? 0 : a * b / gcd;
     }
+
+    public static void Pop<T>(this Stack<T> input, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            input.Pop();
+        }
+    }
+
+    public static void PushRange<T>(this Stack<T> input, IEnumerable<T> items)
+    {
+        foreach (var item in items)
+        {
+            input.Push(item);
+        }
+    }
 }

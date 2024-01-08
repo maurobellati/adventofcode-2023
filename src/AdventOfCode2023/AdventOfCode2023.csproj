@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="**\*.txt">
+    <Content Include="Day*\**\*.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
