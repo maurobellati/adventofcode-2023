@@ -40,24 +40,56 @@ public static class Day23
             .Where(move => !path.Contains(move.Candidate))
             .Select(move => move.Candidate);
 
-    private static void Dfs(
+    private static void DfsIterative(
         Func<Cell, Path, Grid, IEnumerable<Cell>> getCandidates,
         Action<Path> processSolution,
-        Path path)
+        Cell start)
     {
-        var currentCell = path.Peek();
+        // path is the full path from start to goal
+        Path path = new([start]);
 
-        if (currentCell == goal)
-        {
-            processSolution(path);
-            return;
-        }
+        Stack<Cell> choices = new([start]);
 
-        foreach (var candidate in getCandidates(currentCell, path, grid))
+        // forks contains just the nodes where there is a choice
+        Stack<Cell> forks = new([start]);
+
+
+        while (choices.Any())
         {
-            path.Push(candidate);
-            Dfs(getCandidates, processSolution, path);
-            path.Pop();
+            var currentCell = choices.Pop();
+            path.Push(currentCell);
+
+            if (currentCell == goal)
+            {
+                processSolution(path);
+                while (path.Peek() != forks.Peek())
+                {
+                    path.Pop();
+                }
+            }
+
+            var candidates = getCandidates(currentCell, path, grid).ToList();
+            while (candidates.Count == 1)
+            {
+                currentCell = candidates[0];
+                path.Push(currentCell);
+                if (currentCell == goal)
+                {
+                    processSolution(path);
+                    while (path.Peek() != forks.Peek())
+                    {
+                        path.Pop();
+                    }
+                }
+
+                candidates = getCandidates(currentCell, path, grid).ToList();
+            }
+
+            forks.Push(currentCell);
+            foreach (var candidate in candidates)
+            {
+                choices.Push(candidate);
+            }
         }
     }
 
@@ -80,7 +112,8 @@ public static class Day23
             // Console.WriteLine($"Path: {string.Join(" -> ", solution)}");
         };
 
-        Dfs(getCandidates, goalReached, path);
+        // DfsRecursive(getCandidates, goalReached, path);
+        DfsIterative(getCandidates, goalReached, start);
 
         return solutionLengths.Max();
     }
