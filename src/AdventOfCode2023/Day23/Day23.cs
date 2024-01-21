@@ -11,14 +11,6 @@ public static class Day23
     private static readonly char SlopeRight = '>';
     private static readonly char SlopeLeft = '<';
 
-    private static readonly HashSet<(Direction, char)> SlopeCompatibility =
-    [
-        (Direction.U, SlopeUp),
-        (Direction.D, SlopeDown),
-        (Direction.R, SlopeRight),
-        (Direction.L, SlopeLeft)
-    ];
-
     private static readonly Dictionary<Direction, char> DirToSlope = new()
     {
         [Direction.U] = SlopeUp,
@@ -30,31 +22,28 @@ public static class Day23
     private static Grid grid;
     private static Cell goal;
 
-    public static int Part1(string file)
-    {
-        var lines = File.ReadAllLines(file);
-        grid = new(lines);
-        var start = FindOpenCell(lines, 0);
-        goal = FindOpenCell(lines, lines.Length - 1);
+    public static int Part1(string file) => SolveWith(file, BuildGetCandidates(true));
 
-        Path path = new([start]);
+    public static int Part2(string file) => SolveWith(file, BuildGetCandidates(false));
 
-        List<Path> solutions = [];
-        Action<Path> goalReached = solution =>
-        {
-            solutions.Add(new([..solution]));
-            Console.WriteLine($"Goal reached in {solution.Count} steps");
-            // Console.WriteLine($"Path: {string.Join(" -> ", solution)}");
-        };
+    private static Func<Cell, Path, Grid, IEnumerable<Cell>> BuildGetCandidates(bool considerSlope) =>
+        (cell, path, grid) => Direction.All
+            .Select(
+                direction => new
+                {
+                    Direction = direction,
+                    Candidate = cell.Move(direction)
+                })
+            .Where(move => grid.Contains(move.Candidate))
+            .Where(move => grid.ValueAt(move.Candidate) != Forest)
+            .Where(move => !considerSlope || grid.ValueAt(move.Candidate) == Open || grid.ValueAt(move.Candidate) == DirToSlope[move.Direction])
+            .Where(move => !path.Contains(move.Candidate))
+            .Select(move => move.Candidate);
 
-        Dfs(goalReached, path);
-
-        return solutions.MaxBy(it => it.Count)!.Count - 1;
-    }
-
-    public static int Part2(string file) => 0;
-
-    private static void Dfs(Action<Path> processSolution, Path path)
+    private static void Dfs(
+        Func<Cell, Path, Grid, IEnumerable<Cell>> getCandidates,
+        Action<Path> processSolution,
+        Path path)
     {
         var currentCell = path.Peek();
 
@@ -64,41 +53,37 @@ public static class Day23
             return;
         }
 
-        foreach (var direction in Direction.All)
+        foreach (var candidate in getCandidates(currentCell, path, grid))
         {
-            var candidate = currentCell.Move(direction);
-            if (!grid.Contains(candidate))
-            {
-                continue;
-            }
-
-            if (!IsCellValid(candidate, direction))
-            {
-                continue;
-            }
-
-            if (path.Contains(candidate))
-            {
-                continue;
-            }
-
             path.Push(candidate);
-            Dfs(processSolution, path);
+            Dfs(getCandidates, processSolution, path);
             path.Pop();
         }
     }
 
     private static Cell FindOpenCell(string[] lines, int row) => new(row, lines[row].IndexOf(Open));
 
-    private static bool IsCellValid(Cell cell, Direction direction)
+    private static int SolveWith(string file, Func<Cell, Path, Grid, IEnumerable<Cell>> getCandidates)
     {
-        var cellValue = grid.ValueAt(cell);
-        return cellValue == Open || cellValue == DirToSlope[direction];
-    }
+        var lines = File.ReadAllLines(file);
+        grid = new(lines);
+        var start = FindOpenCell(lines, 0);
+        goal = FindOpenCell(lines, lines.Length - 1);
 
-    private static bool IsSlopeValid(char cellValue, Direction direction) =>
-        DirToSlope[direction] == cellValue;
-    // SlopeCompatibility.Contains((direction, cellValue));
+        Path path = new([start]);
+
+        List<int> solutionLengths = [];
+        Action<Path> goalReached = solution =>
+        {
+            solutionLengths.Add(solution.Count - 1);
+            // Console.WriteLine($"Goal reached in {solution.Count} steps");
+            // Console.WriteLine($"Path: {string.Join(" -> ", solution)}");
+        };
+
+        Dfs(getCandidates, goalReached, path);
+
+        return solutionLengths.Max();
+    }
 
     internal readonly record struct Direction(int DeltaX, int DeltaY)
     {
@@ -116,7 +101,7 @@ public static class Day23
         public Cell Move(Direction direction) => new(Row + direction.DeltaX, Col + direction.DeltaY);
     }
 
-    private class Grid
+    private sealed class Grid
     {
         private readonly string[] lines;
 
