@@ -19,6 +19,14 @@ public static class Day23
         (Direction.L, SlopeLeft)
     ];
 
+    private static readonly Dictionary<Direction, char> DirToSlope = new()
+    {
+        [Direction.U] = SlopeUp,
+        [Direction.D] = SlopeDown,
+        [Direction.R] = SlopeRight,
+        [Direction.L] = SlopeLeft
+    };
+
     private static Grid grid;
     private static Cell goal;
 
@@ -41,9 +49,7 @@ public static class Day23
 
         Dfs(goalReached, path);
 
-        var longestSolution = solutions.MaxBy(it => it.Count);
-        var steps = longestSolution.Count - 1;
-        return steps;
+        return solutions.MaxBy(it => it.Count)!.Count - 1;
     }
 
     public static int Part2(string file) => 0;
@@ -61,8 +67,12 @@ public static class Day23
         foreach (var direction in Direction.All)
         {
             var candidate = currentCell.Move(direction);
+            if (!grid.Contains(candidate))
+            {
+                continue;
+            }
 
-            if (!IsCellValid(grid, candidate, direction))
+            if (!IsCellValid(candidate, direction))
             {
                 continue;
             }
@@ -80,11 +90,15 @@ public static class Day23
 
     private static Cell FindOpenCell(string[] lines, int row) => new(row, lines[row].IndexOf(Open));
 
-    private static bool IsCellValid(Grid grid, Cell cell, Direction direction) =>
-        grid.Contains(cell) &&
-        (grid.ValueAt(cell) == Open || IsSlopeValid(grid.ValueAt(cell), direction));
+    private static bool IsCellValid(Cell cell, Direction direction)
+    {
+        var cellValue = grid.ValueAt(cell);
+        return cellValue == Open || cellValue == DirToSlope[direction];
+    }
 
-    private static bool IsSlopeValid(char cellValue, Direction direction) => SlopeCompatibility.Contains((direction, cellValue));
+    private static bool IsSlopeValid(char cellValue, Direction direction) =>
+        DirToSlope[direction] == cellValue;
+    // SlopeCompatibility.Contains((direction, cellValue));
 
     internal readonly record struct Direction(int DeltaX, int DeltaY)
     {
