@@ -122,25 +122,21 @@ public static class Day16
             {
                 '.' => [direction],
                 '/' =>
-                [
                     direction switch
                     {
-                        Direction.N => Direction.E,
-                        Direction.E => Direction.N,
-                        Direction.S => Direction.W,
-                        Direction.W => Direction.S
-                    }
-                ],
+                        Direction.N => [Direction.E],
+                        Direction.E => [Direction.N],
+                        Direction.S => [Direction.W],
+                        Direction.W => [Direction.S]
+                    },
                 '\\' =>
-                [
                     direction switch
                     {
-                        Direction.N => Direction.W,
-                        Direction.E => Direction.S,
-                        Direction.S => Direction.E,
-                        Direction.W => Direction.N
-                    }
-                ],
+                        Direction.N => [Direction.W],
+                        Direction.E => [Direction.S],
+                        Direction.S => [Direction.E],
+                        Direction.W => [Direction.N]
+                    },
                 '|' =>
                     direction switch
                     {

@@ -1,7 +1,5 @@
 namespace adventofcode2023.Day11;
 
-using CSharpFunctionalExtensions;
-
 public static class Day11
 {
     public static long Part1(string file) => Solve(file, 2);
@@ -30,7 +28,6 @@ public static class Day11
     {
         // the input is a rectangular matrix of '#' and '.'
         // a galaxy is represented by a '#'
-        var index = 1;
         for (var y = 0; y < lines.Length; y++)
         {
             var line = lines[y];
@@ -38,7 +35,7 @@ public static class Day11
             {
                 if (line[x] == '#')
                 {
-                    yield return new(index++, x, y);
+                    yield return new(x, y);
                 }
             }
         }
@@ -48,7 +45,7 @@ public static class Day11
     {
         var lines = File.ReadAllLines(file);
         // parse file to a set of Galaxies
-        var galaxies = ParseGalaxies(lines).Order().ToList();
+        var galaxies = ParseGalaxies(lines).OrderBy(g => g.Y).ThenBy(g => g.X).ToList();
 
         // set x and y gaps equals so the all the x and y that are not covered by any galaxy
         var gapsUpToX = FindGapsUpTo(galaxies, it => it.X);
@@ -69,26 +66,5 @@ public static class Day11
         return distances.Sum(it => it.Distance);
     }
 
-    private sealed class Galaxy : ValueObject
-    {
-        public Galaxy(int index, int x, int y)
-        {
-            Index = index;
-            X = x;
-            Y = y;
-        }
-
-        public int Index { get; }
-
-        public int X { get; }
-
-        public int Y { get; }
-
-        public override string ToString() => $"{Index}({X},{Y})";
-
-        protected override IEnumerable<IComparable> GetEqualityComponents()
-        {
-            yield return Index;
-        }
-    }
+    private readonly record struct Galaxy(int X, int Y);
 }

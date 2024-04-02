@@ -19,7 +19,7 @@ public static class Day12
         var parts = input.Split(' ');
         var record = string.Join("?", Enumerable.Repeat(parts[0], fold));
         var groups = string.Join(",", Enumerable.Repeat(parts[1], fold));
-        return (record, new(groups.Split(',').Select(int.Parse).ToList()));
+        return (record, groups.Split(',').Select(int.Parse).ToList());
     }
 
     public static long Part1(string file) => Solve(file, 1);
