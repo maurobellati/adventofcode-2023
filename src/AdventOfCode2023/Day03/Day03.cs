@@ -27,14 +27,14 @@ public static class Day03
             .Sum();
     }
 
-    private static List<Number> ExtractNumbers(string line, int y) =>
+    private static List<Number> ExtractNumbers(string line, int x) =>
         // line is a string like "467.$..*..114.."
         // extract the numbers from the string, including the start and end position of each number
         Regex.Matches(line, @"\d+")
             .Select(
                 match => new Number(
                     int.Parse(match.Value),
-                    y,
+                    x,
                     match.Index,
                     match.Index + match.Length - 1
                 ))

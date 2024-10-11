@@ -3,14 +3,14 @@ namespace adventofcode2023.Day09;
 public static class Day09
 {
     public static long Part1(string file) =>
-        File.ReadAllLines(file)
+        File.ReadLines(file)
             .Select(ParseInputAsLongs)
             .Select(PredictNextNumber)
             .Select(list => list.Last())
             .Sum();
 
     public static long Part2(string file) =>
-        File.ReadAllLines(file)
+        File.ReadLines(file)
             .Select(ParseInputAsLongs)
             .Select(PredictPreviousNumber)
             .Select(list => list.First())
@@ -19,7 +19,7 @@ public static class Day09
     private static List<long> ComputeDiffs(IReadOnlyCollection<long> input) =>
         input.Zip(input.Skip(1), (a, b) => b - a).ToList();
 
-    private static List<long> ParseInputAsLongs(string line) => line.Split(" ").Select(long.Parse).ToList();
+    private static List<long> ParseInputAsLongs(string line) => line.ExtractLongs().ToList();
 
     private static List<long> PredictNextNumber(List<long> input)
     {

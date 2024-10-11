@@ -10,8 +10,7 @@ public static class Day20
 
     public static long Part1(string file)
     {
-        var lines = File.ReadAllLines(file);
-        var machine = ParseMachine(lines);
+        var machine = ParseMachine(file);
 
         List<PulseCommand> commands = [];
 
@@ -29,12 +28,11 @@ public static class Day20
     public static long Part2(string file)
     {
         //what is the fewest number of button presses required to deliver a single low pulse to the module named rx?
-        var lines = File.ReadAllLines(file);
-        var machine = ParseMachine(lines);
+        var machine = ParseMachine(file);
 
         var output = "rx";
         var rxSource = machine.GetSourcesOf(output).Single();
-        Debug.Assert(machine.GetModule(rxSource) is ConjunctionModule);
+        Debug.Assert(machine.GetModuleByName(rxSource) is ConjunctionModule);
 
         var rxSourceSourceNames = machine.GetSourcesOf(rxSource).ToList();
         Console.WriteLine($"[{rxSourceSourceNames.Join(", ")}] --> {rxSource} --> {output}");
@@ -57,8 +55,8 @@ public static class Day20
             // LogCommands(i, cycleCommand.Where(it => rxSourceSourceNames.Contains(it.Source.Name)));
 
             foreach (var sourceName in cycleCommand
-                         .Where(it => rxSourceSourceNames.Contains(it.Source) && it.Pulse == High)
-                         .Select(it => it.Source))
+                         .Where(it => rxSourceSourceNames.Contains(it.SourceName) && it.Pulse == High)
+                         .Select(it => it.SourceName))
             {
                 seenCount[sourceName]++;
                 cycleLength.TryAdd(sourceName, runCount);
@@ -73,7 +71,7 @@ public static class Day20
             }
         }
 
-        return cycleLength.Values.Aggregate(Extensions.Lcm);
+        return cycleLength.Values.Aggregate(MathExtensions.Lcm);
     }
 
     private static void LogCommands(int index, IEnumerable<PulseCommand> cycleCommand)
@@ -81,12 +79,13 @@ public static class Day20
         Console.WriteLine($"Cycle {index}");
         foreach (var command in cycleCommand)
         {
-            Console.WriteLine($"{command.Source} -{command.Pulse}-> {command.Destination}");
+            Console.WriteLine($"{command.SourceName} -{command.Pulse}-> {command.DestinationName}");
         }
     }
 
-    private static Machine ParseMachine(string[] lines)
+    private static Machine ParseMachine(string file)
     {
+        var lines = File.ReadLines(file);
         List<Module> modules = [];
         Dictionary<string, List<string>> forwardConnections = [];
         foreach (var parts in lines.Select(it => it.Split(" -> ", StringSplitOptions.TrimEntries)))
@@ -94,9 +93,9 @@ public static class Day20
             var connections = parts[1].Split(", ", StringSplitOptions.TrimEntries).ToList();
             Module module = parts[0].Trim() switch
             {
-                ['%', .. var name] => new FlipFlopModule { Name = name },
-                ['&', .. var name] => new ConjunctionModule { Name = name },
-                var name => new BroadcasterModule { Name = name }
+                ['%', .. var name] => new FlipFlopModule(name),
+                ['&', .. var name] => new ConjunctionModule(name),
+                var name => new BroadcasterModule(name)
             };
 
             modules.Add(module);
@@ -104,14 +103,6 @@ public static class Day20
         }
 
         return new(modules, forwardConnections);
-    }
-
-    private static void PrintMermaidFlowchart(Machine machine)
-    {
-        foreach (var connection in machine.Connections)
-        {
-            Console.WriteLine($"{connection.Key} --> {connection.Value.Join(" & ")}");
-        }
     }
 
     private static List<PulseCommand> Run(Machine machine)
@@ -126,16 +117,16 @@ public static class Day20
             var command = commands.Dequeue();
             executedCommands.Add(command);
 
-            var destinationModule = machine.GetModule(command.Destination);
-            var pulse = destinationModule.ReceivePulse(command.Source, command.Pulse);
+            var destinationModule = machine.GetModuleByName(command.DestinationName);
+            var pulse = destinationModule.ReceivePulse(command.SourceName, command.Pulse);
             if (pulse is null)
             {
                 continue;
             }
 
-            foreach (var destinationDestination in machine.Connections[command.Destination])
+            foreach (var destinationDestination in machine.Connections[command.DestinationName])
             {
-                commands.Enqueue(new(command.Destination, destinationDestination, pulse.Value));
+                commands.Enqueue(new(command.DestinationName, destinationDestination, pulse.Value));
             }
         }
 
@@ -162,30 +153,28 @@ public static class Day20
             foreach (var name in connections.SelectMany(it => it.Value).Except(connections.Keys))
             {
                 Console.WriteLine($"Adding missing module {name}");
-                this.modules.Add(name, new() { Name = name });
+                this.modules.Add(name, new(name));
             }
         }
 
         public Dictionary<string, List<string>> Connections { get; }
 
-        public Module GetModule(string name) => modules[name];
+        public Module GetModuleByName(string name) => modules[name];
 
         public IEnumerable<string> GetSourcesOf(string module) => Connections.Where(kv => kv.Value.Contains(module)).Select(kv => kv.Key);
-
-        public IEnumerable<Module> GetSourcesOf(Module module) => Connections.Where(kv => kv.Value.Contains(module.Name)).Select(kv => modules[kv.Key]);
     }
 
-    private sealed record PulseCommand(string Source, string Destination, Pulse Pulse)
+    private sealed record PulseCommand(string SourceName, string DestinationName, Pulse Pulse)
     {
-        public override string ToString() => $"{Source} -{Pulse}-> {Destination}";
+        public override string ToString() => $"{SourceName} -{Pulse}-> {DestinationName}";
     }
 
-    private sealed class BroadcasterModule : Module
+    private sealed record BroadcasterModule(string Name) : Module(Name)
     {
         public override Pulse? ReceivePulse(string moduleName, Pulse pulse) => pulse;
     }
 
-    private sealed class FlipFlopModule : Module
+    private sealed record FlipFlopModule(string Name) : Module(Name)
     {
         private bool isOn;
 
@@ -204,7 +193,7 @@ public static class Day20
         }
     }
 
-    private sealed class ConjunctionModule : Module
+    private sealed record ConjunctionModule(string Name) : Module(Name)
     {
         private readonly Dictionary<string, Pulse> pulses = new();
 
@@ -212,7 +201,7 @@ public static class Day20
         {
             // When a pulse is received, the conjunction module first updates its memory for that input.
             pulses[moduleName] = pulse;
-            // //Then, if it remembers high pulses for all inputs, it sends a low pulse; otherwise, it sends a high pulse.
+            //Then, if it remembers high pulses for all inputs, it sends a low pulse; otherwise, it sends a high pulse.
             return pulses.Values.All(p => p == High) ? Low : High;
         }
 
@@ -226,10 +215,8 @@ public static class Day20
         }
     }
 
-    private class Module
+    private record Module(string Name)
     {
-        public required string Name { get; init; }
-
         public virtual Pulse? ReceivePulse(string moduleName, Pulse pulse) => null;
 
         public override string ToString() => $"{GetType().Name} {Name}";

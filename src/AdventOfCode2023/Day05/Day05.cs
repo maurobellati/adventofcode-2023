@@ -7,7 +7,7 @@ public static class Day05
         var lines = File.ReadAllLines(file);
 
         // first line has format: "seeds: 1 2 3 4 5"
-        var seeds = lines[0].Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(long.Parse).ToList();
+        var seeds = lines[0].ExtractLongs();
         var maps = ParseMaps(lines);
         return seeds.Select(seed => SeedToLocation(maps, seed)).Min();
     }
@@ -19,9 +19,9 @@ public static class Day05
         // first line has format: "seeds: 1 2 3 4 5 6"
         // seeds must be considered in pairs or Range: (1,2) (3,4) (5,6)
         // chunk seeds into pairs
-        var seeds = lines[0].Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Skip(1).Select(long.Parse);
-        IEnumerable<Range> ranges = seeds.Chunk(2).Select(x => Range.FromStartAndLength(x[0], x[1])).ToList();
+        var seeds = lines[0].ExtractLongs();
         var maps = ParseMaps(lines);
+        IEnumerable<Range> ranges = seeds.Chunk(2).Select(x => Range.FromStartAndLength(x[0], x[1])).ToList();
 
         var finalRanges = maps.Aggregate(ranges, (stepRanges, map) => stepRanges.SelectMany(map.Split));
         return finalRanges.MinBy(range => range.Start)?.Start ?? 0;
@@ -44,7 +44,7 @@ public static class Day05
                 i++;
                 while (i < lines.Length && !string.IsNullOrEmpty(lines[i]))
                 {
-                    var ruleParts = lines[i].Split(" ").Select(long.Parse).ToArray();
+                    var ruleParts = lines[i].ExtractLongs().ToList();
                     rules.Add(new(ruleParts[1], ruleParts[0], ruleParts[2]));
                     i++;
                 }

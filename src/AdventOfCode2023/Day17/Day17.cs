@@ -1,17 +1,19 @@
 namespace adventofcode2023.Day17;
 
+using MinMax = (int Min, int Max);
+
 public static class Day17
 {
     public static int Part1(string file) => Solve(file, (0, 3));
 
     public static int Part2(string file) => Solve(file, (4, 10));
 
-    private static (Node Node, int Cost, Dictionary<Node, Node> Parents) Dijkstra(Grid grid, Cell start, Cell goal, (int Min, int Max) sameDirectionMinMaxSteps)
+    private static (Node Node, int Cost, Dictionary<Node, Node> Parents) Dijkstra(Grid<int> grid, Cell start, Cell goal, MinMax sameDirectionMinMaxSteps)
     {
-        var queue = new PriorityQueue<(Node Node, int Cost), int>();
-        var processed = new HashSet<Node>();
-        var costs = new Dictionary<Node, int>();
-        var parents = new Dictionary<Node, Node>();
+        PriorityQueue<(Node Node, int Cost), int> queue = new();
+        HashSet<Node> processed = [];
+        Dictionary<Node, int> costsAtNode = [];
+        Dictionary<Node, Node> parents = [];
 
         var startNode = new Node(start, null);
         queue.Enqueue((startNode, 0), 0);
@@ -29,8 +31,8 @@ public static class Day17
 
             foreach (var direction in GetAllowedDirections(currentNode, sameDirectionMinMaxSteps))
             {
-                var nextCell = currentNode.Cell.Step(direction);
-                if (!grid.IsInside(nextCell))
+                var nextCell = currentNode.Cell.Move(direction);
+                if (!grid.Contains(nextCell))
                 {
                     continue;
                 }
@@ -44,8 +46,8 @@ public static class Day17
                     continue;
                 }
 
-                var nextCost = currentCost + grid.Costs[nextCell.Row][nextCell.Col];
-                if (costs.TryGetValue(nextNode, out var bestCost) && bestCost <= nextCost)
+                var nextCost = currentCost + grid.ValueAt(nextCell);
+                if (costsAtNode.TryGetValue(nextNode, out var bestCost) && bestCost <= nextCost)
                 {
                     // skip nodes with same cell and history but higher cost
                     // Console.WriteLine("  Skipping ({0}, {1}, Cost={2}) because high cost", nextNode.Cell, nextNode.History, nextCost);
@@ -55,7 +57,7 @@ public static class Day17
                 // Console.WriteLine("  Adding ({0}, {1}, Cost={2})", nextNode.Cell, nextNode.History, nextCost);
                 queue.Enqueue((nextNode, nextCost), nextCost);
                 parents[nextNode] = currentNode;
-                costs[nextNode] = nextCost;
+                costsAtNode[nextNode] = nextCost;
             }
 
             // mark current node as processed, after all neighbors have been visited
@@ -70,43 +72,26 @@ public static class Day17
         throw new InvalidOperationException("No path found");
     }
 
-    private static IEnumerable<Direction> GetAllowedDirections(Node current, (int Min, int Max) sameDirectionMinMaxSteps)
-    {
-        if (current.History is null)
-        {
-            return Direction.All;
-        }
+    private static IEnumerable<Direction> GetAllowedDirections(Node node, MinMax sameDirectionMinMaxSteps) =>
+        node.History is null
+            ? Direction.GetAll()
+            : Direction.GetAll()
+                .Where(d => d != node.History.Direction.Opposite()) // disallow going back
+                .Where(d => d == node.History.Direction || node.History.Count >= sameDirectionMinMaxSteps.Min) // disallow short runs in same direction
+                .Where(d => d != node.History.Direction || node.History.Count < sameDirectionMinMaxSteps.Max); // disallow long runs in same direction
 
-        return Direction.All
-            .Where(d => !d.IsOppositeOf(current.History.Direction)) // disallow going back
-            .Where(d => d == current.History.Direction || current.History.Count >= sameDirectionMinMaxSteps.Min) // disallow short runs in same direction
-            .Where(d => d != current.History.Direction || current.History.Count < sameDirectionMinMaxSteps.Max); // disallow long runs in same direction
-    }
+    private static Grid<int> ParseGrid(string file) =>
+        Grid<int>.Create(File.ReadLines(file).Select(line => line.Select(@char => (int)char.GetNumericValue(@char))));
 
-    private static int Solve(string file, (int, int) minMaxConsecutiveStepsInSameDirection)
+    private static int Solve(string file, (int, int) sameDirectionMinMaxSteps)
     {
-        var lines = File.ReadAllLines(file);
-        var grid = new Grid(lines.Select(line => line.Select(c => (int)char.GetNumericValue(c)).ToArray()).ToArray());
-        var start = new Cell(0, 0);
+        var grid = ParseGrid(file);
+        var start = Cell.Origin;
         var goal = new Cell(grid.Rows - 1, grid.Cols - 1);
 
-        var result = Dijkstra(grid, start, goal, minMaxConsecutiveStepsInSameDirection);
+        var result = Dijkstra(grid, start, goal, sameDirectionMinMaxSteps);
 
         return result.Cost;
-    }
-
-    public record Direction(string Label, int DeltaRow, int DeltaCol)
-    {
-        private static readonly Direction N = new("N", -1, 0);
-        private static readonly Direction S = new("S", 1, 0);
-        private static readonly Direction E = new("E", 0, 1);
-        private static readonly Direction W = new("W", 0, -1);
-
-        public static readonly IReadOnlyList<Direction> All = [N, S, E, W];
-
-        public override string ToString() => Label;
-
-        public bool IsOppositeOf(Direction other) => DeltaRow == -other.DeltaRow && DeltaCol == -other.DeltaCol;
     }
 
     private sealed record Node(Cell Cell, DirectionHistory? History)
@@ -117,23 +102,5 @@ public static class Day17
     private sealed record DirectionHistory(Direction Direction, int Count)
     {
         public override string ToString() => $"History({Direction}:{Count})";
-    }
-
-    private sealed record Cell(int Row, int Col)
-    {
-        public override string ToString() => $"Cell({Row}, {Col})";
-
-        public Cell Step(Direction direction) => new(Row + direction.DeltaRow, Col + direction.DeltaCol);
-    }
-
-    private sealed class Grid(int[][] costs)
-    {
-        public int Cols { get; } = costs[0].Length;
-
-        public int[][] Costs { get; } = costs;
-
-        public int Rows { get; } = costs.Length;
-
-        public bool IsInside(Cell cell) => cell.Row >= 0 && cell.Row < Rows && cell.Col >= 0 && cell.Col < Cols;
     }
 }

@@ -1,13 +1,11 @@
 namespace adventofcode2023.Day10;
 
-using System.Collections;
-
 public static class Day10
 {
     public static int Part1(string file)
     {
         var lines = File.ReadAllLines(file);
-        var grid = new Grid(lines);
+        var grid = Grid<char>.Create(lines);
         var start = FindStart(lines);
         var loop = FindLoop(grid, start);
 
@@ -17,22 +15,18 @@ public static class Day10
     public static int Part2(string file)
     {
         var lines = File.ReadAllLines(file);
-        var grid = new Grid(lines);
+        var grid = Grid<char>.Create(lines);
         var start = FindStart(lines);
         var loop = FindLoop(grid, start);
 
         // double the size of the grid, so the flood fill can go between contiguous segments
-        var box = grid.Box * 2;
+        var box = grid.GetBox() * 2;
 
         // double the resolution of the loop, so there are no gaps between loop segments
         var tightLoop = loop
             .Select(segment => segment with { Cell = segment.Cell * 2 })
             .SelectMany(
-                segment => new[]
-                {
-                    segment.Cell,
-                    segment.NextCell()
-                })
+                segment => new[] { segment.Cell, segment.NextCell() })
             .ToHashSet();
 
         HashSet<Cell> visited = [..tightLoop];
@@ -52,19 +46,19 @@ public static class Day10
         return inside.Count;
     }
 
-    private static List<Segment> FindLoop(Grid grid, Cell start)
+    private static List<Segment> FindLoop(Grid<char> grid, Cell start)
     {
         // find the first segment that is not a dead end
-        var startSegment = Enum.GetValues<Direction>()
+        var startSegment = Direction.GetAll()
             .Select(direction => new Segment(start, 'S', direction))
-            .First(segment => NextSegment(grid, segment) != null);
+            .First(segment => grid.NextSegment(segment) != null);
 
         List<Segment> loop = [startSegment];
 
         var current = startSegment;
         do
         {
-            current = NextSegment(grid, current);
+            current = grid.NextSegment(current);
             loop.Add(current ?? throw new InvalidOperationException($"the loop is not closed: [{string.Join(", ", loop)}]"));
         } while (current.NextCell() != startSegment.Cell);
 
@@ -78,102 +72,44 @@ public static class Day10
 
     private static (ISet<Cell> Visited, bool IsInside) Flood(Cell cell, ISet<Cell> loop, Box box)
     {
-        HashSet<Cell> visited = [cell];
-        var queue = new Queue<Cell>([cell]);
+        HashSet<Cell> visitedCells = [cell];
+        var floodFrontier = new Queue<Cell>([cell]);
+
         var isInside = true;
-        while (queue.Count > 0)
+        while (floodFrontier.IsNotEmpty())
         {
-            var current = queue.Dequeue();
-            foreach (var direction in Enum.GetValues<Direction>())
+            var currentCell = floodFrontier.Dequeue();
+            foreach (var nextCell in currentCell.MoveMany(Direction.GetAll()))
             {
-                var next = current.Step(Directions.Steps[direction]);
-                if (visited.Contains(next) || loop.Contains(next))
+                if (visitedCells.Contains(nextCell) || loop.Contains(nextCell))
                 {
                     continue;
                 }
 
-                if (!box.Contains(next))
+                isInside &= box.Contains(nextCell);
+                if (!isInside)
                 {
-                    isInside = false;
                     continue;
                 }
 
-                visited.Add(next);
-                queue.Enqueue(next);
+                visitedCells.Add(nextCell);
+                floodFrontier.Enqueue(nextCell);
             }
         }
 
-        return (visited, isInside);
+        return (visitedCells, isInside);
     }
 
-    private static Segment? NextSegment(Grid grid, Segment input)
-    {
-        var next = input.NextCell();
-        if (!grid.Box.Contains(next))
-        {
-            return null;
-        }
-
-        var symbol = grid.GetSymbolAt(next);
-        var pipeType = PipeType.FromSymbol(symbol);
-        if (pipeType is null)
-        {
-            return null;
-        }
-
-        var inDirection = Directions.Opposites[input.Direction];
-        if (!pipeType.CanConnectFrom(inDirection))
-        {
-            return null;
-        }
-
-        return new(next, symbol, pipeType.GetOutDirection(inDirection));
-    }
-
-    private sealed record Cell(int Row, int Col)
-    {
-        public static Cell operator *(Cell cell, int factor) => new(cell.Row * factor, cell.Col * factor);
-
-        public Cell Step(Cell step) => new(Row + step.Row, Col + step.Col);
-    }
-
-    private enum Direction
-    {
-        N,
-        S,
-        E,
-        W
-    }
-
-    private static class Directions
-    {
-        public static readonly Dictionary<Direction, Cell> Steps = new()
-        {
-            { Direction.N, new(-1, 0) },
-            { Direction.S, new(1, 0) },
-            { Direction.E, new(0, 1) },
-            { Direction.W, new(0, -1) }
-        };
-
-        public static readonly Dictionary<Direction, Direction> Opposites = new()
-        {
-            { Direction.N, Direction.S },
-            { Direction.S, Direction.N },
-            { Direction.E, Direction.W },
-            { Direction.W, Direction.E }
-        };
-    }
-
-    private sealed record PipeType(char Symbol, Direction[] Directions)
+    public sealed record PipeType(char Symbol, Pair<Direction> Directions)
     {
         private static readonly Dictionary<char, PipeType> All = new PipeType[]
         {
-            new('|', [Direction.N, Direction.S]),
-            new('-', [Direction.E, Direction.W]),
-            new('L', [Direction.N, Direction.E]),
-            new('J', [Direction.N, Direction.W]),
-            new('7', [Direction.S, Direction.W]),
-            new('F', [Direction.S, Direction.E])
+            new('|', new(Direction.N, Direction.S)),
+            new('-', new(Direction.E, Direction.W)),
+            new('L', new(Direction.N, Direction.E)),
+            new('J', new(Direction.N, Direction.W)),
+            new('7', new(Direction.S, Direction.W)),
+            new('F', new(Direction.S, Direction.E))
         }.ToDictionary(it => it.Symbol, it => it);
 
         public static PipeType? FromSymbol(char symbol)
@@ -181,49 +117,37 @@ public static class Day10
             All.TryGetValue(symbol, out var result);
             return result;
         }
-
-        public bool CanConnectFrom(Direction direction) => Directions.Contains(direction);
-
-        public Direction GetOutDirection(Direction inDirection) => Directions.Single(d => d != inDirection);
     }
 
-    private sealed record Segment(Cell Cell, char Symbol, Direction Direction)
+    public sealed record Segment(Cell Cell, char Symbol, Direction Direction)
     {
-        public Cell NextCell() => Cell.Step(Directions.Steps[Direction]);
+        public Cell NextCell() => Cell.Move(Direction);
     }
+}
 
-    private sealed record Box(Cell TopLeft, Cell BottomRight) : IEnumerable<Cell>
+public static class GridExtensions
+{
+    public static Day10.Segment? NextSegment(this Grid<char> grid, Day10.Segment input)
     {
-        public IEnumerator<Cell> GetEnumerator()
+        var next = input.NextCell();
+        if (!grid.Contains(next))
         {
-            for (var row = TopLeft.Row; row <= BottomRight.Row; row++)
-            {
-                for (var col = TopLeft.Col; col <= BottomRight.Col; col++)
-                {
-                    yield return new(row, col);
-                }
-            }
+            return null;
         }
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        public static Box operator *(Box box, int factor) => new(box.TopLeft * factor, box.BottomRight * factor);
-
-        public bool Contains(Cell cell) => cell.Row.Between(TopLeft.Row, BottomRight.Row) && cell.Col.Between(TopLeft.Col, BottomRight.Col);
-    }
-
-    private sealed class Grid
-    {
-        private readonly string[] lines;
-
-        public Grid(string[] lines)
+        var symbol = grid.ValueAt(next);
+        var pipeType = Day10.PipeType.FromSymbol(symbol);
+        if (pipeType is null)
         {
-            this.lines = lines;
-            Box = new(new(0, 0), new(lines.Length - 1, lines[0].Length - 1));
+            return null;
         }
 
-        public Box Box { get; }
+        var inDirection = input.Direction.Opposite();
+        if (!pipeType.Directions.Contains(inDirection))
+        {
+            return null;
+        }
 
-        public char GetSymbolAt(Cell next) => lines[next.Row][next.Col];
+        return new(next, symbol, pipeType.Directions.Other(inDirection));
     }
 }

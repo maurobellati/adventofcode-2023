@@ -4,31 +4,20 @@ using System.Diagnostics;
 
 public static class Day21
 {
-    private const int Rock = '#';
-
-    /// <summary>
-    ///     Computes a mod b.
-    ///     This behaves differently than C# % operator that is a remainder, NOT a modulo.
-    ///     % operator returns a negative number when input is negative.
-    /// </summary>
-    /// <remarks>See: https://torstencurdt.com/tech/posts/modulo-of-negative-numbers/</remarks>
-    /// <returns>a mod b also for negative values of a. The return value is always between 0 and b</returns>
-    public static int Mod(int a, int b) => (a % b + b) % b;
+    private const char Rock = '#';
 
     public static int Part1(string file, int steps)
     {
-        var lines = File.ReadAllLines(file);
-        var grid = ParseGrid(lines);
-        var start = FindStart(lines);
+        var grid = ParseGrid(file);
+        var start = FindStart(grid);
 
         return Bfs(grid, start, steps);
     }
 
     public static long Part2Quadratic(string file, int steps)
     {
-        var lines = File.ReadAllLines(file);
-        var grid = ParseGrid(lines);
-        var start = FindStart(lines);
+        var grid = ParseGrid(file);
+        var start = FindStart(grid);
 
         Debug.Assert(grid.Rows == grid.Cols, "grid must be a square");
         var size = grid.Rows;
@@ -52,7 +41,7 @@ public static class Day21
         // same as part 1
         Part1(file, steps);
 
-    private static int Bfs(Grid grid, Cell start, int steps)
+    private static int Bfs(Grid<char> grid, Cell start, int steps)
     {
         // store the frontier for each step
         List<HashSet<Cell>> frontierByStep =
@@ -69,16 +58,14 @@ public static class Day21
             var frontier = frontierByStep[i - 1];
 
             HashSet<Cell> discovered = [];
-            foreach (var candidate in frontier.SelectMany(
-                             it => new[]
-                             {
-                                 it.Move(Direction.U),
-                                 it.Move(Direction.D),
-                                 it.Move(Direction.L),
-                                 it.Move(Direction.R)
-                             })
-                         .Where(it => grid.ValueAt(it) != Rock))
+            foreach (var candidate in frontier.SelectMany(it => it.MoveMany(Direction.GetAll())))
             {
+                var cell = candidate.Mod(grid);
+                if (grid.ValueAt(cell) == Rock)
+                {
+                    continue;
+                }
+
                 if (!visited.Add(candidate))
                 {
                     // Console.WriteLine($"Cell {candidate} already visited");
@@ -98,43 +85,7 @@ public static class Day21
         return result;
     }
 
-    private static Cell FindStart(string[] lines) =>
-        Enumerable.Range(0, lines.Length)
-            .Select(row => new Cell(row, lines[row].IndexOf('S')))
-            .Single(cell => cell.Col >= 0);
+    private static Cell FindStart(Grid<char> grid) => grid.Find(@char => @char == 'S') ?? throw new InvalidOperationException("Start not found");
 
-    private static Grid ParseGrid(string[] lines) => new(lines);
-
-    internal class Grid
-    {
-        private readonly string[] lines;
-
-        internal Grid(string[] lines)
-        {
-            this.lines = lines;
-            Rows = lines.Length;
-            Cols = lines[0].Length;
-        }
-
-        public int Cols { get; }
-
-        public int Rows { get; }
-
-        public char ValueAt(Cell cell) => lines[Mod(cell.Row, Rows)][Mod(cell.Col, Cols)];
-    }
-
-    public record Direction(int DeltaX, int DeltaY)
-    {
-        public static readonly Direction U = new(-1, 0);
-        public static readonly Direction D = new(1, 0);
-        public static readonly Direction L = new(0, -1);
-        public static readonly Direction R = new(0, 1);
-    }
-
-    internal record Cell(int Row, int Col)
-    {
-        public override string ToString() => $"({Row}, {Col})";
-
-        public Cell Move(Direction direction) => new(Row + direction.DeltaX, Col + direction.DeltaY);
-    }
+    private static Grid<char> ParseGrid(string file) => Grid<char>.Create(File.ReadLines(file));
 }

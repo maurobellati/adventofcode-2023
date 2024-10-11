@@ -11,10 +11,8 @@ public static partial class Day19
 
     public static long Part1(string file)
     {
-        var lines = File.ReadAllLines(file);
-
-        var workflows = ParseWorkflows(lines);
-        var parts = lines.SkipWhile(line => !string.IsNullOrWhiteSpace(line)).Skip(1).Select(ParsePart).ToList();
+        var workflows = ParseWorkflows(file);
+        var parts = ParseParts(file);
 
         return parts
             .Select(part => EvaluatePart(workflows, "in", part))
@@ -23,8 +21,7 @@ public static partial class Day19
 
     public static long Part2(string file)
     {
-        var lines = File.ReadAllLines(file);
-        var workflows = ParseWorkflows(lines);
+        var workflows = ParseWorkflows(file);
         return CountCombinations(workflows, "in", []);
     }
 
@@ -110,6 +107,9 @@ public static partial class Day19
                 .Matches(line)
                 .Select(m => new KeyValuePair<string, int>(m.Groups["field"].Value, int.Parse(m.Groups["value"].Value))));
 
+    private static List<Part> ParseParts(string file) =>
+        File.ReadLines(file).SkipWhile(line => !string.IsNullOrWhiteSpace(line)).Skip(1).Select(ParsePart).ToList();
+
     private static Rule ParseRule(string input)
     {
         // example: "a<2006:b", or "m>2090:c"
@@ -141,19 +141,19 @@ public static partial class Day19
         // name is the first part before the first '{'
         var name = line[..line.IndexOf('{')];
 
-        var ruleStrings = line[name.Length..^1].Split(',').ToList();
-        return new()
-        {
-            Name = name,
-            // parse the rule except the last one
-            Rules = ruleStrings.Take(ruleStrings.Count - 1).Select(ParseRule).ToList(),
-            // last one is the default one
-            DefaultWorkflowName = ruleStrings[^1]
-        };
+        var body = line[name.Length..^1].Split(',');
+
+        // parse the rule except the last one
+        var rules = body.SkipLast(1).Select(ParseRule).ToList();
+
+        // last one is the default workflow
+        var defaultWorkflowName = body.Last();
+
+        return new(name, rules, defaultWorkflowName);
     }
 
-    private static Workflows ParseWorkflows(string[] lines) =>
-        lines.TakeWhile(line => !string.IsNullOrWhiteSpace(line)).Select(ParseWorkflow).ToDictionary(w => w.Name, w => w);
+    private static Workflows ParseWorkflows(string file) =>
+        File.ReadLines(file).TakeWhile(line => !string.IsNullOrWhiteSpace(line)).Select(ParseWorkflow).ToDictionary(w => w.Name, w => w);
 
     [GeneratedRegex(@"(?<field>\w)=(?<value>\d+)")]
     private static partial Regex PartRegex();
@@ -161,20 +161,14 @@ public static partial class Day19
     [GeneratedRegex(@"(?<field>\w)(?<op>[<>])(?<value>\d+):(?<nextWorkflow>\w+)?")]
     private static partial Regex RuleRegex();
 
-    internal class Workflow
+    internal record Workflow(string Name, List<Rule> Rules, string DefaultWorkflowName)
     {
         public const string AcceptedName = "A";
 
         public const string RejectedName = "R";
 
-        public required string DefaultWorkflowName { get; init; }
-
-        public required string Name { get; init; }
-
-        public required List<Rule> Rules { get; init; }
-
         public string Dispatch(Part part) =>
-            // find first rule that matches and select it's next workflow. Otherwise return the default workflow
+            // find first rule that matches and select it's next workflow, otherwise return the default workflow
             Rules.TryFirst(rule => rule.Range.Includes(part[rule.Field])).Map(it => it.NextWorkflowName)
                 .GetValueOrDefault(DefaultWorkflowName);
     }

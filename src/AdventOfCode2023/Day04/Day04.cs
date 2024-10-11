@@ -64,11 +64,9 @@ public static class Day04
 
         return new(
             int.Parse(match.Groups["Id"].Value),
-            ParseInts(match.Groups["numbers"].Value).ToArray(),
-            ParseInts(match.Groups["winningNumbers"].Value).ToArray());
+            match.Groups["numbers"].Value.ExtractInts(),
+            match.Groups["winningNumbers"].Value.ExtractInts().ToArray());
     }
-
-    private static IEnumerable<int> ParseInts(string value) => value.Split(" ", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).Select(int.Parse);
 
     private static int Points(Card card)
     {
@@ -80,12 +78,12 @@ public static class Day04
 
     private sealed class Card
     {
-        public Card(int id, ICollection<int> numbers, ICollection<int> winningNumbers)
+        public Card(int id, IEnumerable<int> numbers, IEnumerable<int> winningNumbers)
         {
             Id = id;
             Numbers = numbers.ToHashSet();
             WinningNumbers = winningNumbers.ToHashSet();
-            MatchingNumbers = numbers.Intersect(winningNumbers).ToHashSet();
+            MatchingNumbers =  Numbers.Intersect(WinningNumbers).ToHashSet();
         }
 
         public int Id { get; }

@@ -6,86 +6,39 @@ public static class Day22
 {
     public static int Part1(string file)
     {
-        var grid = new Grid(File.ReadAllLines(file).Select((line, id) => ParseBrick(line)));
-        var moved = MakeAllBricksFallTilGround(grid);
-
-        // copy the bricks otherwise we get a concurrent modification exception
-        var bricks = moved.ToList();
-        return bricks.Count(it => IsRemovable(it, moved));
+        var endGrid = ParseGrid(file).FreeFall();
+        return endGrid.Select(brick => CountDiffsWhenRemovingOneBrick(endGrid, brick)).Count(delta => delta == 0);
     }
 
     public static int Part2(string file)
     {
-        var grid = new Grid(File.ReadAllLines(file).Select((line, id) => ParseBrick(line)));
-        var moved = MakeAllBricksFallTilGround(grid);
-
-        // copy the bricks otherwise we get a concurrent modification exception
-        var bricks = moved.ToList();
-        return bricks.Sum(brick => HowManyFallWhenRemoving(moved, brick));
+        var endGrid = ParseGrid(file).FreeFall();
+        return endGrid.Sum(brick => CountDiffsWhenRemovingOneBrick(endGrid, brick));
     }
 
-    private static int HowManyFallWhenRemoving(Grid grid, Brick brick)
+    private static int CountDiffsWhenRemovingOneBrick(Grid grid, Brick brick)
     {
         // remove brick, so we can try to move something down
-        grid.Remove(brick);
-
-        var moved = MakeAllBricksFallOneStep(grid);
-        var result = grid.CountDiffs(moved);
-
-        // re-add brick back
-        grid.Add(brick);
-
-        return result;
-    }
-
-    private static bool IsRemovable(Brick brick, Grid grid) => HowManyFallWhenRemoving(grid, brick) == 0;
-
-    private static Grid MakeAllBricksFallOneStep(Grid input)
-    {
-        Grid result = [];
-        foreach (var brick in input.OrderBy(brick => brick.A.Z))
-        {
-            result.Add(TryMoveDown(result, brick) ?? brick);
-        }
-
-        return result;
-    }
-
-    private static Grid MakeAllBricksFallTilGround(Grid grid)
-    {
-        // move until we can't move anymore
-        var moved = MakeAllBricksFallOneStep(grid);
-        while (!SameGrid(moved, grid))
-        {
-            grid = moved;
-            moved = MakeAllBricksFallOneStep(grid);
-        }
-
-        return moved;
+        var currentGrid = new Grid(grid.Except([brick]));
+        var nextGrid = currentGrid.Tick();
+        return currentGrid.CountDiffs(nextGrid);
     }
 
     private static Brick ParseBrick(string line) => Brick.Create(ParsePoint(line.Split('~')[0]), ParsePoint(line.Split('~')[1]));
 
-    private static Point ParsePoint(string input) => new(int.Parse(input.Split(',')[0]), int.Parse(input.Split(',')[1]), int.Parse(input.Split(',')[2]));
+    private static Grid ParseGrid(string file) => new(File.ReadLines(file).Select(ParseBrick));
 
-    private static bool SameGrid(Grid x, Grid y) => x.CountDiffs(y) == 0;
-
-    private static Brick? TryMoveDown(Grid grid, Brick brick)
+    private static Point ParsePoint(string input)
     {
-        var moved = brick.MoveDown(1);
-        if (moved.A.Z < 1 || moved.B.Z < 1 || grid.AnyOverlaps(moved))
-        {
-            return null;
-        }
-
-        return moved;
+        var ints = input.ExtractInts().ToList();
+        return new(ints[0], ints[1], ints[2]);
     }
 
     internal class Grid : IEnumerable<Brick>
     {
-        private readonly Dictionary<Point, Brick> pointToBrick = new();
+        private readonly Dictionary<Point, Brick> pointToBrick = [];
 
-        public Grid() : this(Array.Empty<Brick>())
+        private Grid()
         {
         }
 
@@ -101,9 +54,19 @@ public static class Day22
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public void Add(Brick brick) => brick.Points.ForEach(point => pointToBrick[point] = brick);
+        public override bool Equals(object? obj)
+        {
+            if (obj is not Grid other)
+            {
+                return false;
+            }
 
-        public bool AnyOverlaps(Brick brick) => brick.Points.Exists(point => pointToBrick.ContainsKey(point));
+            var thisSet = pointToBrick.Values.ToHashSet();
+            var otherSet = other.pointToBrick.Values.ToHashSet();
+            return thisSet.SetEquals(otherSet);
+        }
+
+        public override int GetHashCode() => pointToBrick.GetHashCode();
 
         public int CountDiffs(Grid other)
         {
@@ -112,7 +75,41 @@ public static class Day22
             return thisSet.Except(otherSet).Count();
         }
 
-        public void Remove(Brick brick) => brick.Points.ForEach(point => pointToBrick.Remove(point));
+        public Grid FreeFall()
+        {
+            // move until we can't move anymore
+            var current = this;
+            var next = current.Tick();
+            while (!next.Equals(current))
+            {
+                current = next;
+                next = current.Tick();
+            }
+
+            return next;
+        }
+
+        public Grid Tick()
+        {
+            var result = new Grid();
+            foreach (var brick in this.OrderBy(brick => brick.A.Z))
+            {
+                result.Add(result.TryMoveDown(brick));
+            }
+
+            return result;
+        }
+
+        private void Add(Brick brick) => brick.Points.ForEach(point => pointToBrick[point] = brick);
+
+        private bool AnyOverlaps(Brick brick) => brick.Points.Exists(point => pointToBrick.ContainsKey(point));
+
+        private Brick TryMoveDown(Brick brick)
+        {
+            var moved = brick.MoveDown(1);
+            var anyCollision = moved.A.Z < 1 || moved.B.Z < 1 || AnyOverlaps(moved);
+            return anyCollision ? brick : moved;
+        }
     }
 
     internal readonly record struct Brick : IComparable<Brick>, IComparable
@@ -121,12 +118,12 @@ public static class Day22
         {
             A = a;
             B = b;
-            var p = A;
             var dx = A.X == B.X ? 0 : 1;
             var dy = A.Y == B.Y ? 0 : 1;
             var dz = A.Z == B.Z ? 0 : 1;
 
-            Points.Add(A);
+            Points = [A];
+            var p = A;
             do
             {
                 p = new(p.X + dx, p.Y + dy, p.Z + dz);
@@ -138,30 +135,28 @@ public static class Day22
 
         public Point B { get; }
 
-        public List<Point> Points { get; } = new();
+        public List<Point> Points { get; }
 
-        public int CompareTo(Brick other)
-        {
-            var aComparison = A.Z.CompareTo(other.A.Z);
-            return aComparison != 0 ? aComparison : B.Z.CompareTo(other.B.Z);
-        }
+        public int CompareTo(Brick other) => A.Z.NullableCompareTo(other.A.Z) ?? B.Z.CompareTo(other.B.Z);
 
         public int CompareTo(object? obj) => CompareTo((Brick)obj!);
 
         public static Brick Create(Point a, Point b)
         {
             // make sure A is always the lowest point
-            var swapped = a.Z.CompareTo(b.Z) > 0;
+            var swapped = a.Z > b.Z;
             return new(swapped ? b : a, swapped ? a : b);
         }
 
-        public override string ToString() => $"({A}-{B})";
+        public override string ToString() => $"Brick({A}, {B})";
 
         public Brick MoveDown(int step) => Create(A.MoveDown(step), B.MoveDown(step));
     }
 
-    internal readonly record struct Point(int X, int Y, int Z) //: IComparable<Point>, IComparable
+    internal readonly record struct Point(int X, int Y, int Z)
     {
+        public override string ToString() => $"P({X},{Y},{Z})";
+
         public Point MoveDown(int step) => this with { Z = Z - step };
     }
 }

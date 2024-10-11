@@ -22,7 +22,7 @@ public static class Day02
     private static int GetComponent(string input, string component)
     {
         var value = Regex.Match(input, $@"(\d+) {component}").Groups[1].Value;
-        return string.IsNullOrEmpty(value) ? 0 : int.Parse(value);
+        return value.IsBlank() ? 0 : int.Parse(value);
     }
 
     private static Match MaxMatch(IReadOnlyCollection<Match> rgbs) =>
@@ -35,10 +35,9 @@ public static class Day02
     private static Game ParseGame(string line)
     {
         // extract Id from: "Game {ID}: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green"
-        var id = int.Parse(Regex.Match(line, @"Game (\d+):").Groups[1].Value);
+        var id = line.Before(":").ExtractInts().Single();
         // get substring after :
-        var matchesSubstring = line[(line.IndexOf(':') + 1)..];
-        var matches = matchesSubstring.Split(";").Select(ParseMatch).ToList();
+        var matches = line.After(":").Split(";").Select(ParseMatch).ToList();
         return new(id, matches);
     }
 

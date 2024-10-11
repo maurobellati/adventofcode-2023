@@ -24,28 +24,15 @@ public static class Day11
         return Enumerable.Range(0, max + 1).Select(x => gaps.Count(gap => gap < x)).ToList();
     }
 
-    private static IEnumerable<Galaxy> ParseGalaxies(string[] lines)
-    {
+    private static IEnumerable<Galaxy> ParseGalaxies(string file) =>
         // the input is a rectangular matrix of '#' and '.'
         // a galaxy is represented by a '#'
-        for (var y = 0; y < lines.Length; y++)
-        {
-            var line = lines[y];
-            for (var x = 0; x < line.Length; x++)
-            {
-                if (line[x] == '#')
-                {
-                    yield return new(x, y);
-                }
-            }
-        }
-    }
+        File.ReadLines(file).Scan(@char => @char == '#').Select(cell => new Galaxy(cell.Row, cell.Col));
 
     private static long Solve(string file, int expansion)
     {
-        var lines = File.ReadAllLines(file);
         // parse file to a set of Galaxies
-        var galaxies = ParseGalaxies(lines).OrderBy(g => g.Y).ThenBy(g => g.X).ToList();
+        var galaxies = ParseGalaxies(file).OrderBy(g => g.Y).ThenBy(g => g.X).ToList();
 
         // set x and y gaps equals so the all the x and y that are not covered by any galaxy
         var gapsUpToX = FindGapsUpTo(galaxies, it => it.X);

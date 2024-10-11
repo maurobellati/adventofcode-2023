@@ -15,7 +15,7 @@ public class Day12Tests
     public void Arrangements(string input, int expected)
     {
         var (record, groups) = Day12.Parse(input, 1);
-        Day12.Arrangements(record, groups).Should().Be(expected);
+        Day12.CountArrangements(record, groups).Should().Be(expected);
     }
 
     [Theory]
@@ -38,6 +38,6 @@ public class Day12Tests
     public void UnfoldedArrangements(string input, int expected)
     {
         var (record, groups) = Day12.Parse(input, 5);
-        Day12.Arrangements(record, groups).Should().Be(expected);
+        Day12.CountArrangements(record, groups).Should().Be(expected);
     }
 }

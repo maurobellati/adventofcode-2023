@@ -17,21 +17,18 @@ public static class Day18
             return FindTotalAreaByFlooding(loop);
         }
 
-        internal static Instruction ParseInstruction(string line)
-        {
+        internal static Instruction ParseInstruction(string line) =>
             // line is in the format: "R 6 (#70c710)"
-            var parts = line.Split(' ');
-            return new(
-                parts[0] switch
+            new(
+                line.Split(' ')[0] switch
                 {
-                    "R" => Direction.R,
-                    "L" => Direction.L,
-                    "U" => Direction.U,
-                    "D" => Direction.D,
-                    _ => throw new ArgumentException($"Invalid direction: {parts[0]}")
+                    "R" => Direction.E,
+                    "L" => Direction.W,
+                    "U" => Direction.N,
+                    "D" => Direction.S,
+                    _ => throw new ArgumentException($"Invalid direction at line: {line}")
                 },
-                int.Parse(parts[1]));
-        }
+                int.Parse(line.Split(' ')[1]));
 
         private static List<Cell> BuildLoop(List<Instruction> instructions)
         {
@@ -40,14 +37,14 @@ public static class Day18
             List<Cell> cells = [start];
             foreach (var instruction in instructions)
             {
-                var previousCell = cells[^1];
+                var lastCell = cells.Last();
                 for (var step = 1; step <= instruction.Value; step++)
                 {
-                    cells.Add(previousCell.Move(instruction.Direction, step));
+                    cells.Add(lastCell.Move(instruction.Direction, step));
                 }
             }
 
-            if (cells[^1] != start)
+            if (cells.Last() != start)
             {
                 throw new ArgumentException("The loop does not end at the start");
             }
@@ -59,13 +56,7 @@ public static class Day18
         {
             // for each point diagonally near the origin, try to flood the space until reach the loop
             var origin = loop.First();
-            foreach (var start in new[]
-                     {
-                         origin.Move(1, 1),
-                         origin.Move(-1, 1),
-                         origin.Move(1, -1),
-                         origin.Move(-1, -1)
-                     })
+            foreach (var start in new[] { origin.Move(1, 1), origin.Move(-1, 1), origin.Move(1, -1), origin.Move(-1, -1) })
             {
                 var area = Flood(start, loop);
                 if (area > 0)
@@ -79,8 +70,9 @@ public static class Day18
 
         private static int Flood(Cell start, List<Cell> loop)
         {
-            var visited = new HashSet<Cell>();
-            var queue = new Queue<Cell>();
+            HashSet<Cell> visited = [];
+            Queue<Cell> queue = new();
+
             queue.Enqueue(start);
             while (queue.Count > 0)
             {
@@ -103,15 +95,9 @@ public static class Day18
 
                 visited.Add(cell);
 
-                foreach (var direction in new[]
-                         {
-                             Direction.U,
-                             Direction.D,
-                             Direction.L,
-                             Direction.R
-                         })
+                foreach (var direction in Direction.GetAll())
                 {
-                    queue.Enqueue(cell.Move(direction, 1));
+                    queue.Enqueue(cell.Move(direction));
                 }
             }
 
@@ -162,15 +148,15 @@ public static class Day18
         private static IEnumerable<Rectangle> BuildRectangles(List<Segment> loop)
         {
             var cells = loop.SelectMany(segment => segment.Cells).ToList();
-            var allXs = cells.Select(it => it.X).Distinct().Order().ToList();
-            var allYs = cells.Select(it => it.Y).Distinct().Order().ToList();
+            var allCols = cells.Select(it => it.Col).Distinct().Order().ToList();
+            var allRows = cells.Select(it => it.Row).Distinct().Order().ToList();
 
-            for (var yIndex = 0; yIndex < allYs.Count - 1; yIndex++)
+            for (var rowIndex = 0; rowIndex < allRows.Count - 1; rowIndex++)
             {
-                for (var xIndex = 0; xIndex < allXs.Count - 1; xIndex++)
+                for (var colIndex = 0; colIndex < allCols.Count - 1; colIndex++)
                 {
-                    var topLeft = new Cell(allXs[xIndex], allYs[yIndex]);
-                    var bottomRight = new Cell(allXs[xIndex + 1], allYs[yIndex + 1]);
+                    var topLeft = new Cell(allRows[rowIndex], allCols[colIndex]);
+                    var bottomRight = new Cell(allRows[rowIndex + 1], allCols[colIndex + 1]);
                     yield return new(topLeft, bottomRight);
                 }
             }
@@ -178,7 +164,8 @@ public static class Day18
 
         private static bool IsInside(List<Segment> loop, Rectangle rectangle)
         {
-            var center = new Cell((rectangle.TopLeft.X + rectangle.BottomRight.X) / 2, (rectangle.TopLeft.Y + rectangle.BottomRight.Y) / 2);
+            var col = (rectangle.TopLeft.Col + rectangle.BottomRight.Col) / 2;
+            var center = new Cell((rectangle.TopLeft.Row + rectangle.BottomRight.Row) / 2, col);
             return IsInside(loop, center);
         }
 
@@ -186,9 +173,9 @@ public static class Day18
         {
             // cast a ray from the cell to the right and count the number of segments that:
             var count = loop
-                .Where(segment => segment.A.X == segment.B.X) // are vertical
-                .Where(segment => segment.A.X > cell.X) // are at the right of the cell
-                .Where(segment => cell.Y.Between(segment.A.Y, segment.B.Y)) // intersects the horizontal ray
+                .Where(segment => segment.A.Col == segment.B.Col) // are vertical
+                .Where(segment => segment.A.Col > cell.Col) // are at the right of the cell
+                .Where(segment => cell.Row.Between(segment.A.Row, segment.B.Row)) // intersects the horizontal ray
                 .ToList();
             // if the number of segments is odd, the cell is inside the loop
             return count.Count % 2 == 1;
@@ -206,10 +193,10 @@ public static class Day18
             return new(
                 directionCode switch
                 {
-                    "0" => Direction.R,
-                    "1" => Direction.D,
-                    "2" => Direction.L,
-                    "3" => Direction.U,
+                    "0" => Direction.E,
+                    "1" => Direction.S,
+                    "2" => Direction.W,
+                    "3" => Direction.N,
                     _ => throw new ArgumentException($"Invalid direction: {directionCode}")
                 },
                 int.Parse(metersInHex, NumberStyles.HexNumber));
@@ -219,8 +206,8 @@ public static class Day18
         {
             // build a grid of all the cells and split each segment in subsegments
             var cells = loop.SelectMany(segment => segment.Cells).ToList();
-            var allXs = cells.Select(it => it.X).Distinct().Order().ToList();
-            var allYs = cells.Select(it => it.Y).Distinct().Order().ToList();
+            var allXs = cells.Select(it => it.Col).Distinct().Order().ToList();
+            var allYs = cells.Select(it => it.Row).Distinct().Order().ToList();
             return loop.SelectMany(segment => SplitWithSubSegments(segment, allXs, allYs)).ToList();
         }
 
@@ -229,105 +216,61 @@ public static class Day18
             if (segment.IsVertical)
             {
                 // vertical segment
-                var x = segment.A.X;
-                var yMin = Math.Min(segment.A.Y, segment.B.Y);
-                var yMax = Math.Max(segment.A.Y, segment.B.Y);
-                var yMinIndex = allYs.IndexOf(yMin);
-                var yMaxIndex = allYs.IndexOf(yMax);
-                for (var yIndex = yMinIndex; yIndex < yMaxIndex; yIndex++)
+                var col = segment.A.Col;
+                var rowMin = Math.Min(segment.A.Row, segment.B.Row);
+                var rowMax = Math.Max(segment.A.Row, segment.B.Row);
+                var rowMinIndex = allYs.IndexOf(rowMin);
+                var rowMaxIndex = allYs.IndexOf(rowMax);
+                for (var rowIndex = rowMinIndex; rowIndex < rowMaxIndex; rowIndex++)
                 {
-                    Cell b = new(x, allYs[yIndex + 1]);
-                    yield return new(new(x, allYs[yIndex]), b);
+                    var b = new Cell(allYs[rowIndex + 1], col);
+                    yield return new(new(allYs[rowIndex], col), b);
                 }
             }
             else
             {
                 // horizontal segment
-                var y = segment.A.Y;
-                var xMin = Math.Min(segment.A.X, segment.B.X);
-                var xMax = Math.Max(segment.A.X, segment.B.X);
-                var xMinIndex = allXs.IndexOf(xMin);
-                var xMaxIndex = allXs.IndexOf(xMax);
-                for (var xIndex = xMinIndex; xIndex < xMaxIndex; xIndex++)
+                var row = segment.A.Row;
+                var colMin = Math.Min(segment.A.Col, segment.B.Col);
+                var colMax = Math.Max(segment.A.Col, segment.B.Col);
+                var colMinIndex = allXs.IndexOf(colMin);
+                var colMaxIndex = allXs.IndexOf(colMax);
+                for (var colIndex = colMinIndex; colIndex < colMaxIndex; colIndex++)
                 {
-                    Cell b = new(allXs[xIndex + 1], y);
-                    yield return new(new(allXs[xIndex], y), b);
+                    var b = new Cell(row, allXs[colIndex + 1]);
+                    yield return new(new(row, allXs[colIndex]), b);
                 }
             }
         }
     }
 
-    internal class Cell : ValueObject
+    public record Segment(Cell A, Cell B)
     {
-        public Cell(int x, int y)
-        {
-            X = x;
-            Y = y;
-        }
+        public Cell A { get; } = A <= B ? A : B;
 
-        public int X { get; }
+        public Cell B { get; } = A <= B ? B : A;
 
-        public int Y { get; }
+        public IEnumerable<Cell> Cells => new[] { A, B };
 
-        public override string ToString() => $"({X}, {Y})";
+        public bool IsHorizontal => A.Row == B.Row;
 
-        public Cell Move(Direction direction, int steps) => new(X + direction.DeltaX * steps, Y + direction.DeltaY * steps);
+        public bool IsVertical => A.Col == B.Col;
 
-        public Cell Move(int deltaX, int deltaY) => new(X + deltaX, Y + deltaY);
-
-        protected override IEnumerable<IComparable> GetEqualityComponents()
-        {
-            yield return X;
-            yield return Y;
-        }
-    }
-
-    internal class Segment : ValueObject
-    {
-        public Segment(Cell a, Cell b)
-        {
-            var swapped = a.CompareTo(b) > 0;
-            A = swapped ? b : a;
-            B = swapped ? a : b;
-        }
-
-        public Cell A { get; }
-
-        public Cell B { get; }
-
-        public IEnumerable<Cell> Cells => new[]
-        {
-            A,
-            B
-        };
-
-        public bool IsHorizontal => A.Y == B.Y;
-
-        public bool IsVertical => A.X == B.X;
-
-        public int Length => IsVertical ? B.Y - A.Y + 1 : B.X - A.X + 1;
-
-        public override string ToString() => $"({A} -> {B}) L={Length}";
-
-        protected override IEnumerable<IComparable> GetEqualityComponents()
-        {
-            yield return A;
-            yield return B;
-        }
+        public int Length => IsVertical ? B.Row - A.Row + 1 : B.Col - A.Col + 1;
     }
 
     internal class Rectangle : ValueObject
     {
         public Rectangle(Cell topLeft, Cell bottomRight)
         {
-            var swapped = topLeft.CompareTo(bottomRight) > 0;
+            var swapped = topLeft > bottomRight;
             TopLeft = swapped ? bottomRight : topLeft;
             BottomRight = swapped ? topLeft : bottomRight;
         }
 
         public Cell BottomRight { get; }
 
-        public long InnerArea => (BottomRight.X - TopLeft.X - 1L) * (BottomRight.Y - TopLeft.Y - 1L);
+        public long InnerArea => (BottomRight.Col - TopLeft.Col - 1L) * (BottomRight.Row - TopLeft.Row - 1L);
 
         public Cell TopLeft { get; }
 
@@ -335,26 +278,20 @@ public static class Day18
 
         public IEnumerable<Segment> Segments()
         {
-            yield return new(TopLeft, new(BottomRight.X, TopLeft.Y));
-            yield return new(new(BottomRight.X, TopLeft.Y), BottomRight);
-            yield return new(BottomRight, new(TopLeft.X, BottomRight.Y));
-            yield return new(new(TopLeft.X, BottomRight.Y), TopLeft);
+            yield return new(TopLeft, new(TopLeft.Row, BottomRight.Col));
+            yield return new(new(TopLeft.Row, BottomRight.Col), BottomRight);
+            yield return new(BottomRight, new(BottomRight.Row, TopLeft.Col));
+            yield return new(new(BottomRight.Row, TopLeft.Col), TopLeft);
         }
 
         protected override IEnumerable<IComparable> GetEqualityComponents()
         {
-            yield return TopLeft;
-            yield return BottomRight;
+            yield return TopLeft.Col;
+            yield return TopLeft.Row;
+            yield return BottomRight.Col;
+            yield return BottomRight.Row;
         }
     }
 
     internal record Instruction(Direction Direction, int Value);
-
-    public record Direction(int DeltaX, int DeltaY)
-    {
-        public static readonly Direction U = new(0, -1);
-        public static readonly Direction D = new(0, 1);
-        public static readonly Direction L = new(-1, 0);
-        public static readonly Direction R = new(1, 0);
-    }
 }
