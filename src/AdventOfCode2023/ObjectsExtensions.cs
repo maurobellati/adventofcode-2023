@@ -2,7 +2,7 @@ namespace adventofcode2023;
 
 public static class ObjectsExtensions
 {
-    public static void AddRange<T>(this HashCode hashCode, IEnumerable<T> items)
+    public static void AddRange<T>(this ref HashCode hashCode, IEnumerable<T> items)
     {
         foreach (var item in items)
         {

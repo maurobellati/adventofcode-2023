@@ -85,7 +85,7 @@ public static class Day21
         return result;
     }
 
-    private static Cell FindStart(Grid<char> grid) => grid.Find(@char => @char == 'S') ?? throw new InvalidOperationException("Start not found");
+    private static Cell FindStart(Grid<char> grid) => grid.GetEntries().Single(it => it.Value == 'S').Cell;
 
     private static Grid<char> ParseGrid(string file) => Grid<char>.Create(File.ReadLines(file));
 }
