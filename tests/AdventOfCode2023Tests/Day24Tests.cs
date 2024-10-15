@@ -10,7 +10,7 @@ public class Day24Tests
     public void Part1(string file, long min, long max, long expected) => Assert.Equal(expected, Day24.Part1(file, min, max));
 
     [Theory]
-    [InlineData("Day24/example.txt", 0)]
+    [InlineData("Day24/example.txt", 47)]
     [InlineData("Day24/input.txt", 0)]
     public void Part2(string file, int expected) => Assert.Equal(expected, Day24.Part2(file));
 }
